@@ -1,16 +1,17 @@
 # Money Tracker
 
-A simple, fast, and responsive expense tracking web application built using pure HTML, CSS, and vanilla JavaScript. No external dependencies, servers, or databases required.
+A simple, fast, and responsive money and expense tracking web application built using pure HTML, CSS, and vanilla JavaScript. Features Nigerian Naira (₦) currency formatting and full income tracking.
 
 ## Features
 
 - **No Backend / Database Required**: Completely client-side and runs right in any modern web browser.
-- **Persistent Storage**: Uses browser `localStorage` so your spendings persist across page reloads.
-- **Add Spends**: Easily record what you spent, how much, and the date.
-- **List & Search**: View your spendings neatly and filter them in real-time by keyword, amount, or date.
-- **Edit Records**: Update details of any previous spending.
-- **Delete with Confirmation**: In-app custom confirmation modal prevents accidental deletions.
-- **Summary Metrics**: View total spend count and total expenditure at a glance.
+- **Naira Currency (₦)**: Formats all amounts in Nigerian Naira (`₦`).
+- **Income & Expense Tracking**: Easily switch between recording daily spendings or incoming revenue.
+- **Financial Overview**: Real-time summary cards displaying Net Balance, Total Income, Total Spends, and Spends Count.
+- **Persistent Storage**: Uses browser `localStorage` so your spendings and income persist across page reloads.
+- **Filter & Search**: Filter by `All`, `Spends`, or `Income`, and search records dynamically by keyword, amount, or date.
+- **Edit & Update**: Modify details of any spend or income record with ease.
+- **Safe Deletion**: In-app custom confirmation modal prevents accidental deletions.
 - **Mobile Responsive**: Clean layout optimized for mobile screens and desktop alike.
 
 ## Getting Started
@@ -20,6 +21,6 @@ A simple, fast, and responsive expense tracking web application built using pure
 
 ## Files
 
-- `index.html` - App structure and modal markup
-- `style.css` - Responsive modern styling and modal animations
-- `script.js` - Dynamic DOM interactions, search filtering, and localStorage management
+- `index.html` - App structure, stats overview, income/expense form, and modal markup
+- `style.css` - Responsive modern styling, segmented controls, badges, and modal animations
+- `script.js` - Dynamic DOM interactions, income/spend logic, search & tab filtering, and localStorage management

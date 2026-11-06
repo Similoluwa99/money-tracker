@@ -6,24 +6,38 @@ const STORAGE_KEY = 'money_tracker_spends';
 let spends = [];
 let editingId = null;
 let pendingDeleteId = null;
+let currentFormType = 'expense'; // 'expense' or 'income'
+let currentFilter = 'all'; // 'all', 'expense', or 'income'
 
 // DOM Elements
 const spendForm = document.getElementById('spendForm');
 const spendIdInput = document.getElementById('spendId');
+const transactionTypeInput = document.getElementById('transactionType');
 const spendTitleInput = document.getElementById('spendTitle');
+const titleLabel = document.getElementById('titleLabel');
 const spendAmountInput = document.getElementById('spendAmount');
 const spendDateInput = document.getElementById('spendDate');
 const submitBtn = document.getElementById('submitBtn');
 const cancelEditBtn = document.getElementById('cancelEditBtn');
 const formTitle = document.getElementById('formTitle');
 const formCard = document.querySelector('.form-card');
+const typeExpenseBtn = document.getElementById('typeExpenseBtn');
+const typeIncomeBtn = document.getElementById('typeIncomeBtn');
 
 const spendsList = document.getElementById('spendsList');
 const searchInput = document.getElementById('searchInput');
 const emptyState = document.getElementById('emptyState');
+const emptyTitle = document.getElementById('emptyTitle');
+const emptyMessage = document.getElementById('emptyMessage');
 const noResultsState = document.getElementById('noResultsState');
-const totalCountEl = document.getElementById('totalCount');
+const listHeading = document.getElementById('listHeading');
+const filterTabBtns = document.querySelectorAll('.tab-btn');
+
+// Stat Elements
+const netBalanceEl = document.getElementById('netBalance');
+const totalIncomeEl = document.getElementById('totalIncome');
 const totalAmountEl = document.getElementById('totalAmount');
+const totalCountEl = document.getElementById('totalCount');
 
 // Modal Elements
 const deleteModal = document.getElementById('deleteModal');
@@ -36,6 +50,7 @@ function init() {
   loadSpends();
   setDefaultDate();
   setupEventListeners();
+  setFormType('expense');
   render();
 }
 
@@ -51,12 +66,15 @@ function loadSpends() {
     const rawData = localStorage.getItem(STORAGE_KEY);
     if (rawData) {
       const parsed = JSON.parse(rawData);
-      spends = Array.isArray(parsed) ? parsed : [];
+      spends = Array.isArray(parsed) ? parsed.map(item => ({
+        ...item,
+        type: item.type || 'expense' // backward compatibility
+      })) : [];
     } else {
       spends = [];
     }
   } catch (error) {
-    console.error('Failed to parse spends from localStorage:', error);
+    console.error('Failed to parse data from localStorage:', error);
     spends = [];
   }
 }
@@ -66,7 +84,31 @@ function saveSpends() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(spends));
   } catch (error) {
-    console.error('Failed to save spends to localStorage:', error);
+    console.error('Failed to save data to localStorage:', error);
+  }
+}
+
+// Set Form Type (Expense or Income)
+function setFormType(type) {
+  currentFormType = type;
+  transactionTypeInput.value = type;
+
+  if (type === 'income') {
+    typeIncomeBtn.classList.add('active');
+    typeExpenseBtn.classList.remove('active');
+    titleLabel.textContent = 'Income source / description';
+    spendTitleInput.placeholder = 'e.g., Salary, Client payment, Bonus, Gift';
+    formTitle.textContent = editingId ? 'Edit Income' : 'Add New Income';
+    submitBtn.textContent = editingId ? 'Update Income' : 'Add Income';
+    submitBtn.className = 'btn btn-success';
+  } else {
+    typeExpenseBtn.classList.add('active');
+    typeIncomeBtn.classList.remove('active');
+    titleLabel.textContent = 'What did you spend on?';
+    spendTitleInput.placeholder = 'e.g., Groceries, Fuel, Data subscription';
+    formTitle.textContent = editingId ? 'Edit Spend' : 'Add New Spend';
+    submitBtn.textContent = editingId ? 'Update Spend' : 'Add Spend';
+    submitBtn.className = 'btn btn-primary';
   }
 }
 
@@ -77,6 +119,21 @@ function setupEventListeners() {
 
   // Cancel edit
   cancelEditBtn.addEventListener('click', cancelEditing);
+
+  // Type Toggle Buttons
+  typeExpenseBtn.addEventListener('click', () => setFormType('expense'));
+  typeIncomeBtn.addEventListener('click', () => setFormType('income'));
+
+  // Filter Tabs
+  filterTabBtns.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      filterTabBtns.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentFilter = tab.dataset.filter;
+      updateListHeading();
+      render();
+    });
+  });
 
   // Search input filter
   searchInput.addEventListener('input', () => {
@@ -104,6 +161,16 @@ function setupEventListeners() {
   });
 }
 
+function updateListHeading() {
+  if (currentFilter === 'expense') {
+    listHeading.textContent = 'Spendings';
+  } else if (currentFilter === 'income') {
+    listHeading.textContent = 'Income Records';
+  } else {
+    listHeading.textContent = 'All Transactions';
+  }
+}
+
 // Handle Form Submission (Add or Update)
 function handleFormSubmit(event) {
   event.preventDefault();
@@ -111,6 +178,7 @@ function handleFormSubmit(event) {
   const title = spendTitleInput.value.trim();
   const amount = parseFloat(spendAmountInput.value);
   const date = spendDateInput.value;
+  const type = transactionTypeInput.value || 'expense';
 
   if (!title || isNaN(amount) || amount <= 0 || !date) {
     alert('Please fill out all fields with valid information.');
@@ -118,7 +186,7 @@ function handleFormSubmit(event) {
   }
 
   if (editingId) {
-    // Update existing spend
+    // Update existing transaction
     spends = spends.map((item) => {
       if (item.id === editingId) {
         return {
@@ -126,6 +194,7 @@ function handleFormSubmit(event) {
           title,
           amount,
           date,
+          type,
           updatedAt: new Date().toISOString()
         };
       }
@@ -133,15 +202,16 @@ function handleFormSubmit(event) {
     });
     cancelEditing();
   } else {
-    // Add new spend
-    const newSpend = {
-      id: 'spend_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+    // Add new transaction
+    const newTransaction = {
+      id: 'txn_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
       title,
       amount,
       date,
+      type,
       createdAt: new Date().toISOString()
     };
-    spends.unshift(newSpend); // Add to top
+    spends.unshift(newTransaction); // Add to top
     resetForm();
   }
 
@@ -155,13 +225,12 @@ function resetForm() {
   spendIdInput.value = '';
   editingId = null;
   setDefaultDate();
-  submitBtn.textContent = 'Add Spend';
+  setFormType(currentFormType);
   cancelEditBtn.style.display = 'none';
-  formTitle.textContent = 'Add New Spend';
   formCard.classList.remove('is-editing');
 }
 
-// Start editing a spend
+// Start editing an item
 function startEditing(id) {
   const item = spends.find((s) => s.id === id);
   if (!item) return;
@@ -172,9 +241,8 @@ function startEditing(id) {
   spendAmountInput.value = item.amount;
   spendDateInput.value = item.date;
 
-  submitBtn.textContent = 'Update Spend';
+  setFormType(item.type || 'expense');
   cancelEditBtn.style.display = 'inline-flex';
-  formTitle.textContent = 'Edit Spend';
   formCard.classList.add('is-editing');
 
   // Scroll to form smoothly
@@ -193,7 +261,8 @@ function openDeleteModal(id) {
   if (!item) return;
 
   pendingDeleteId = id;
-  modalMessage.textContent = `Are you sure you want to delete "${item.title}"? This action cannot be undone.`;
+  const itemCategory = item.type === 'income' ? 'income record' : 'spend';
+  modalMessage.textContent = `Are you sure you want to delete this ${itemCategory}: "${item.title}"? This action cannot be undone.`;
   deleteModal.style.display = 'flex';
   confirmDeleteBtn.focus();
 }
@@ -221,14 +290,13 @@ function handleConfirmDelete() {
   closeDeleteModal();
 }
 
-// Format currency
+// Format currency as Naira (₦)
 function formatCurrency(num) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
+  const val = Math.abs(Number(num) || 0);
+  return '₦' + val.toLocaleString('en-NG', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
-  }).format(num);
+  });
 }
 
 // Format date nicely (e.g. Nov 6, 2026)
@@ -246,16 +314,42 @@ function formatDate(dateStr) {
 
 // Render UI
 function render() {
-  // Update Top Stats
-  const totalCount = spends.length;
-  const totalAmount = spends.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  // Compute Stats
+  const totalIncome = spends
+    .filter(item => item.type === 'income')
+    .reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
 
-  totalCountEl.textContent = totalCount;
-  totalAmountEl.textContent = formatCurrency(totalAmount);
+  const totalExpenses = spends
+    .filter(item => (item.type || 'expense') === 'expense')
+    .reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
 
-  // Filter based on search query
+  const netBalance = totalIncome - totalExpenses;
+  const totalSpendsCount = spends.filter(item => (item.type || 'expense') === 'expense').length;
+
+  // Update Stats UI
+  netBalanceEl.textContent = (netBalance < 0 ? '-' : '') + formatCurrency(netBalance);
+  if (netBalance > 0) {
+    netBalanceEl.className = 'stat-value text-success';
+  } else if (netBalance < 0) {
+    netBalanceEl.className = 'stat-value text-danger';
+  } else {
+    netBalanceEl.className = 'stat-value';
+  }
+
+  totalIncomeEl.textContent = '+' + formatCurrency(totalIncome);
+  totalAmountEl.textContent = '-' + formatCurrency(totalExpenses);
+  totalCountEl.textContent = totalSpendsCount;
+
+  // Filter based on search query and tab filter
   const query = searchInput.value.trim().toLowerCase();
-  const filteredSpends = spends.filter((item) => {
+  const filteredList = spends.filter((item) => {
+    // Type tab filter
+    const itemType = item.type || 'expense';
+    if (currentFilter !== 'all' && itemType !== currentFilter) {
+      return false;
+    }
+
+    // Search query filter
     if (!query) return true;
     const matchesTitle = item.title.toLowerCase().includes(query);
     const matchesDate = item.date.includes(query) || formatDate(item.date).toLowerCase().includes(query);
@@ -264,16 +358,29 @@ function render() {
   });
 
   // Handle Empty States
-  if (spends.length === 0) {
+  const totalInCurrentFilter = spends.filter(item => currentFilter === 'all' || (item.type || 'expense') === currentFilter).length;
+
+  if (totalInCurrentFilter === 0) {
     spendsList.innerHTML = '';
     emptyState.style.display = 'flex';
     noResultsState.style.display = 'none';
+
+    if (currentFilter === 'income') {
+      emptyTitle.textContent = 'No income recorded yet';
+      emptyMessage.textContent = 'Track your earnings by switching to Income and adding one above!';
+    } else if (currentFilter === 'expense') {
+      emptyTitle.textContent = 'No spendings recorded yet';
+      emptyMessage.textContent = 'Start tracking your expenses by adding your first spend above!';
+    } else {
+      emptyTitle.textContent = 'No transactions recorded yet';
+      emptyMessage.textContent = 'Start tracking by adding your first spend or income above!';
+    }
     return;
   }
 
   emptyState.style.display = 'none';
 
-  if (filteredSpends.length === 0) {
+  if (filteredList.length === 0) {
     spendsList.innerHTML = '';
     noResultsState.style.display = 'flex';
     return;
@@ -283,24 +390,35 @@ function render() {
 
   // Render list items safely using DOM elements
   spendsList.innerHTML = '';
-  filteredSpends.forEach((item) => {
+  filteredList.forEach((item) => {
+    const isIncome = item.type === 'income';
     const li = document.createElement('li');
-    li.className = 'spend-item';
+    li.className = `spend-item ${isIncome ? 'item-income' : 'item-expense'}`;
     li.dataset.id = item.id;
 
     // Info section
     const infoDiv = document.createElement('div');
     infoDiv.className = 'spend-info';
 
+    const titleRow = document.createElement('div');
+    titleRow.className = 'spend-title-row';
+
     const titleSpan = document.createElement('span');
     titleSpan.className = 'spend-title';
     titleSpan.textContent = item.title;
+
+    const badgeSpan = document.createElement('span');
+    badgeSpan.className = `type-badge ${isIncome ? 'badge-income' : 'badge-expense'}`;
+    badgeSpan.textContent = isIncome ? 'Income' : 'Spend';
+
+    titleRow.appendChild(titleSpan);
+    titleRow.appendChild(badgeSpan);
 
     const dateSpan = document.createElement('span');
     dateSpan.className = 'spend-date';
     dateSpan.textContent = formatDate(item.date);
 
-    infoDiv.appendChild(titleSpan);
+    infoDiv.appendChild(titleRow);
     infoDiv.appendChild(dateSpan);
 
     // Meta section (amount + actions)
@@ -308,8 +426,8 @@ function render() {
     metaDiv.className = 'spend-meta';
 
     const amountSpan = document.createElement('span');
-    amountSpan.className = 'spend-amount';
-    amountSpan.textContent = formatCurrency(item.amount);
+    amountSpan.className = `spend-amount ${isIncome ? 'is-income' : 'is-expense'}`;
+    amountSpan.textContent = (isIncome ? '+' : '-') + formatCurrency(item.amount);
 
     const actionsDiv = document.createElement('div');
     actionsDiv.className = 'spend-actions';
@@ -318,8 +436,8 @@ function render() {
     const editBtn = document.createElement('button');
     editBtn.type = 'button';
     editBtn.className = 'btn-icon';
-    editBtn.title = 'Edit spend';
-    editBtn.setAttribute('aria-label', `Edit spend ${item.title}`);
+    editBtn.title = 'Edit';
+    editBtn.setAttribute('aria-label', `Edit ${item.title}`);
     editBtn.innerHTML = '✏️';
     editBtn.addEventListener('click', () => startEditing(item.id));
 
@@ -327,8 +445,8 @@ function render() {
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
     deleteBtn.className = 'btn-icon btn-delete';
-    deleteBtn.title = 'Delete spend';
-    deleteBtn.setAttribute('aria-label', `Delete spend ${item.title}`);
+    deleteBtn.title = 'Delete';
+    deleteBtn.setAttribute('aria-label', `Delete ${item.title}`);
     deleteBtn.innerHTML = '🗑️';
     deleteBtn.addEventListener('click', () => openDeleteModal(item.id));
 

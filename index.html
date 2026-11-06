@@ -10,36 +10,53 @@
   <div class="app-container">
     <header class="app-header">
       <div class="logo">
-        <span class="logo-icon">💸</span>
+        <span class="logo-icon">💰</span>
         <h1>Money Tracker</h1>
       </div>
-      <p class="tagline">Keep track of your daily expenses easily</p>
+      <p class="tagline">Track your income and daily expenses easily</p>
     </header>
 
     <!-- Top Stats Overview -->
-    <section class="stats-grid" aria-label="Spend statistics">
-      <div class="stat-card">
+    <section class="stats-grid" aria-label="Financial overview">
+      <div class="stat-card stat-balance">
+        <span class="stat-label">Net Balance</span>
+        <span class="stat-value" id="netBalance">₦0.00</span>
+      </div>
+      <div class="stat-card stat-income">
+        <span class="stat-label">Total Income</span>
+        <span class="stat-value text-success" id="totalIncome">₦0.00</span>
+      </div>
+      <div class="stat-card stat-expense">
+        <span class="stat-label">Total Spends</span>
+        <span class="stat-value text-danger" id="totalAmount">₦0.00</span>
+      </div>
+      <div class="stat-card stat-count">
         <span class="stat-label">Total Spends</span>
         <span class="stat-value" id="totalCount">0</span>
-      </div>
-      <div class="stat-card">
-        <span class="stat-label">Total Amount</span>
-        <span class="stat-value" id="totalAmount">$0.00</span>
       </div>
     </section>
 
     <!-- Add / Edit Form -->
     <section class="card form-card">
-      <h2 id="formTitle">Add New Spend</h2>
+      <div class="form-header">
+        <h2 id="formTitle">Add New Spend</h2>
+        <!-- Type Selector -->
+        <div class="type-toggle" role="radiogroup" aria-label="Transaction Type">
+          <button type="button" class="toggle-btn active" data-type="expense" id="typeExpenseBtn">💸 Spend</button>
+          <button type="button" class="toggle-btn" data-type="income" id="typeIncomeBtn">💰 Income</button>
+        </div>
+      </div>
+
       <form id="spendForm">
         <input type="hidden" id="spendId">
+        <input type="hidden" id="transactionType" value="expense">
 
         <div class="form-group">
-          <label for="spendTitle">What did you spend on?</label>
+          <label for="spendTitle" id="titleLabel">What did you spend on?</label>
           <input 
             type="text" 
             id="spendTitle" 
-            placeholder="e.g., Groceries, Coffee, Bus ticket" 
+            placeholder="e.g., Groceries, Fuel, Data subscription" 
             required 
             autocomplete="off"
             maxlength="100"
@@ -50,7 +67,7 @@
           <div class="form-group">
             <label for="spendAmount">How much?</label>
             <div class="input-with-prefix">
-              <span class="currency-symbol">$</span>
+              <span class="currency-symbol">₦</span>
               <input 
                 type="number" 
                 id="spendAmount" 
@@ -82,26 +99,34 @@
     <!-- Search & List Section -->
     <section class="card list-card">
       <div class="list-header">
-        <h2>Your Spendings</h2>
+        <div class="list-title-row">
+          <h2 id="listHeading">Transactions</h2>
+          <!-- Filter Tabs -->
+          <div class="filter-tabs" role="tablist" aria-label="Filter transactions">
+            <button type="button" class="tab-btn active" data-filter="all">All</button>
+            <button type="button" class="tab-btn" data-filter="expense">Spends</button>
+            <button type="button" class="tab-btn" data-filter="income">Income</button>
+          </div>
+        </div>
         <div class="search-box">
           <input 
             type="search" 
             id="searchInput" 
-            placeholder="Search spending..." 
-            aria-label="Search spending"
+            placeholder="Search by description or amount..." 
+            aria-label="Search transactions"
             autocomplete="off"
           >
         </div>
       </div>
 
-      <!-- Spends List -->
+      <!-- Spends/Income List -->
       <ul id="spendsList" class="spends-list" aria-live="polite"></ul>
 
       <!-- Friendly Empty State -->
       <div id="emptyState" class="empty-state" style="display: none;">
-        <div class="empty-icon">🌱</div>
-        <h3>No spendings recorded yet</h3>
-        <p>Start tracking your expenses by adding your first spend above!</p>
+        <div class="empty-icon" id="emptyIcon">🌱</div>
+        <h3 id="emptyTitle">No transactions recorded yet</h3>
+        <p id="emptyMessage">Start tracking by adding your first spend or income above!</p>
       </div>
 
       <!-- Search No Results State -->
@@ -129,4 +154,3 @@
   <script src="script.js"></script>
 </body>
 </html>
-
